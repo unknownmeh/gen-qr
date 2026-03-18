@@ -76,104 +76,135 @@ function generateQR() {
   }, 120);
 }
 
-/* ── Download QR — HD version ── */
+/* ── Selected download format ── */
+var selectedFormat = 'png';
+
+function setFormat(btn) {
+  /* toggle active class */
+  document.querySelectorAll('.fmt-btn').forEach(function(b) {
+    b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  selectedFormat = btn.getAttribute('data-fmt');
+  /* update button label */
+  document.getElementById('dlBtnLabel').textContent =
+    'Download HD ' + selectedFormat.toUpperCase();
+}
+
+/* ── HD Download QR ── */
 /*
-  Strategy:
-  - Apply a SCALE multiplier (4×) so even a 220px QR becomes ~1800px output.
-  - Regenerate the QR at full HD size (1200px) on a hidden canvas for pixel-perfect dots.
-  - Composite: white bg → HD QR → label → date/time → export PNG at full resolution.
-  - Uses imageSmoothingEnabled = false to keep QR pixels sharp (no blur).
+  HD Strategy (works on mobile & desktop):
+  ─────────────────────────────────────────
+  1. Re-render the QR at 2400×2400px in a hidden off-screen div (highest quality).
+  2. Composite onto an even larger canvas with padding + label + date.
+  3. imageSmoothingEnabled = false  → razor-sharp QR pixels, no anti-alias blur.
+  4. Use devicePixelRatio = 1 on the export canvas (we control exact px ourselves).
+  5. toBlob with quality=1.0 for PNG / 0.97 for JPG/JPEG.
+  6. Mobile-safe download: try <a download>, fall back to window.open(dataURL).
 */
 function downloadQR() {
-  var container  = document.getElementById('qrCanvas');
+  var input      = document.getElementById('qrInput').value.trim();
   var label      = document.getElementById('qrLabel').value.trim();
   var dateStr    = document.getElementById('qrDateDisplay').textContent;
   var darkColor  = document.getElementById('colorDark').value;
   var lightColor = document.getElementById('colorLight').value;
   var ecc        = document.getElementById('qrEcc').value;
-  var input      = document.getElementById('qrInput').value.trim();
+  var dlBtn      = document.getElementById('dlBtn');
 
   if (!input) {
     alert('Generate a QR code first!');
     return;
   }
 
-  /* ── HD settings ── */
-  var HD_SIZE   = 1200;          /* QR pixel size in the downloaded image  */
-  var SCALE     = 4;             /* multiplier for padding & font sizes     */
-  var PAD       = 60  * SCALE;  /* white border around QR                  */
-  var LABEL_FS  = 36  * SCALE;  /* label font size in px                   */
-  var DATE_FS   = 22  * SCALE;  /* date font size in px                    */
-  var GAP       = 18  * SCALE;  /* gap between QR bottom and label         */
-  var LINE_GAP  = 12  * SCALE;  /* gap between label and date              */
+  /* ── HD constants — fixed regardless of screen / device ── */
+  var QR_PX    = 2400;   /* QR image size in output px          */
+  var PAD      = 160;    /* white border around QR              */
+  var LABEL_FS = 96;     /* label font size px                  */
+  var DATE_FS  = 60;     /* date/time font size px              */
+  var GAP      = 60;     /* space between QR bottom and label   */
+  var LINE_GAP = 36;     /* space between label and date        */
+  var SEP_H    = 4;      /* separator line thickness            */
 
-  var labelH    = label   ? LABEL_FS + GAP      : GAP / 2;
-  var dateH     = dateStr ? DATE_FS  + LINE_GAP : 0;
-  var totalW    = HD_SIZE + PAD * 2;
-  var totalH    = HD_SIZE + PAD * 2 + labelH + dateH + PAD / 2;
+  var labelH  = label   ? LABEL_FS + GAP + SEP_H : SEP_H + GAP / 2;
+  var dateH   = dateStr ? DATE_FS  + LINE_GAP     : 0;
+  var totalW  = QR_PX   + PAD * 2;
+  var totalH  = QR_PX   + PAD * 2 + labelH + dateH + PAD / 2;
 
-  /* ── Step 1: render a fresh HD QR onto a hidden canvas ── */
-  var hdContainer = document.createElement('div');
-  hdContainer.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
-  document.body.appendChild(hdContainer);
+  /* mime type & quality */
+  var fmt     = selectedFormat;
+  var mime    = (fmt === 'png') ? 'image/png' : 'image/jpeg';
+  var quality = (fmt === 'png') ? 1.0         : 0.97;
+  var ext     = fmt; /* png / jpg / jpeg */
 
-  var hdQR = new QRCode(hdContainer, {
+  /* ── disable button while processing ── */
+  dlBtn.disabled = true;
+  document.getElementById('dlBtnLabel').textContent = 'Generating HD…';
+
+  /* ── Step 1: render fresh 2400px QR in a hidden off-screen div ── */
+  var hdDiv = document.createElement('div');
+  hdDiv.style.cssText =
+    'position:fixed;left:-99999px;top:-99999px;width:' + QR_PX + 'px;height:' + QR_PX + 'px;overflow:hidden;visibility:hidden;';
+  document.body.appendChild(hdDiv);
+
+  /* use ERROR_CORRECT_H for maximum data recovery — best for printing */
+  new QRCode(hdDiv, {
     text:         input,
-    width:        HD_SIZE,
-    height:       HD_SIZE,
+    width:        QR_PX,
+    height:       QR_PX,
     colorDark:    darkColor,
-    colorLight:   lightColor,
-    correctLevel: ECC_MAP[ecc] || QRCode.CorrectLevel.H,
+    colorLight:   '#ffffff', /* always white QR background for scannability */
+    correctLevel: QRCode.CorrectLevel.H,
   });
 
-  /* qrcodejs renders async via a short timeout */
+  /* wait for qrcodejs to finish async canvas render */
   setTimeout(function() {
-    var hdCanvas = hdContainer.querySelector('canvas');
-    var hdImg    = hdContainer.querySelector('img');
+    var hdCanvas = hdDiv.querySelector('canvas');
+    var hdImg    = hdDiv.querySelector('img');
     var source   = hdCanvas || hdImg;
 
     if (!source) {
-      document.body.removeChild(hdContainer);
-      alert('Could not render HD QR. Try again.');
+      document.body.removeChild(hdDiv);
+      dlBtn.disabled = false;
+      document.getElementById('dlBtnLabel').textContent =
+        'Download HD ' + fmt.toUpperCase();
+      alert('HD render failed — please try again.');
       return;
     }
 
-    /* ── Step 2: composite onto final HD canvas ── */
+    /* ── Step 2: build final composite canvas ── */
     var off    = document.createElement('canvas');
     off.width  = totalW;
     off.height = totalH;
     var ctx    = off.getContext('2d');
 
-    /* crisp pixel rendering — critical for QR codes */
-    ctx.imageSmoothingEnabled = false;
+    /* CRITICAL: disable smoothing so QR pixels stay perfectly sharp */
+    ctx.imageSmoothingEnabled        = false;
+    ctx.webkitImageSmoothingEnabled  = false;
+    ctx.mozImageSmoothingEnabled     = false;
+    ctx.msImageSmoothingEnabled      = false;
 
-    /* white background */
+    /* solid white background */
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, totalW, totalH);
 
     function composite(src) {
       /* draw HD QR */
-      ctx.drawImage(src, PAD, PAD, HD_SIZE, HD_SIZE);
+      ctx.drawImage(src, PAD, PAD, QR_PX, QR_PX);
 
-      /* thin separator line */
+      var curY = PAD + QR_PX + GAP;
+
+      /* separator line */
       if (label || dateStr) {
-        ctx.strokeStyle = '#e5e7eb';
-        ctx.lineWidth   = 2 * SCALE;
-        ctx.beginPath();
-        ctx.moveTo(PAD, PAD + HD_SIZE + GAP / 2);
-        ctx.lineTo(totalW - PAD, PAD + HD_SIZE + GAP / 2);
-        ctx.stroke();
+        ctx.fillStyle = '#e5e7eb';
+        ctx.fillRect(PAD * 2, curY - GAP / 2, totalW - PAD * 4, SEP_H);
       }
-
-      var curY = PAD + HD_SIZE + GAP;
 
       /* label */
       if (label) {
         ctx.fillStyle    = '#111111';
-        ctx.font         = 'bold ' + LABEL_FS + 'px "Outfit", "Arial Black", Arial, sans-serif';
+        ctx.font         = 'bold ' + LABEL_FS + 'px Outfit, "Arial Black", Arial, sans-serif';
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'top';
-        ctx.letterSpacing = (2 * SCALE) + 'px';
         ctx.fillText(label, totalW / 2, curY);
         curY += LABEL_FS + LINE_GAP;
       }
@@ -181,41 +212,65 @@ function downloadQR() {
       /* date/time */
       if (dateStr) {
         ctx.fillStyle    = '#6b7280';
-        ctx.font         = DATE_FS + 'px "Outfit", Arial, sans-serif';
+        ctx.font         = DATE_FS + 'px Outfit, Arial, sans-serif';
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'top';
-        ctx.letterSpacing = (0.5 * SCALE) + 'px';
         ctx.fillText(dateStr, totalW / 2, curY);
       }
 
-      /* ── Step 3: export at full resolution PNG ── */
+      /* ── Step 3: export & trigger download ── */
+      var safeName = (label
+        ? label.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+        : 'genqr') + '-HD-' + Date.now() + '.' + ext;
+
       off.toBlob(function(blob) {
-        document.body.removeChild(hdContainer);
-        var safeName = label
-          ? label.replace(/[^a-z0-9]/gi, '-').toLowerCase()
-          : 'genqr';
+        /* clean up hidden div */
+        if (document.body.contains(hdDiv)) document.body.removeChild(hdDiv);
+
+        /* restore button */
+        dlBtn.disabled = false;
+        document.getElementById('dlBtnLabel').textContent =
+          'Download HD ' + fmt.toUpperCase();
+
+        if (!blob) {
+          alert('Export failed. Please try again.');
+          return;
+        }
+
         var url = URL.createObjectURL(blob);
-        var a   = document.createElement('a');
-        a.href     = url;
-        a.download = safeName + '-HD-' + Date.now() + '.png';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-      }, 'image/png', 1.0); /* quality=1.0 — lossless PNG */
+
+        /* ── Mobile-safe download ──
+           Most mobile browsers ignore the `download` attribute.
+           We try the anchor trick first; if that fails we open
+           the blob URL in a new tab so the user can long-press → Save.
+        */
+        try {
+          var a      = document.createElement('a');
+          a.href     = url;
+          a.download = safeName;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } catch (e) {
+          /* fallback: open in new tab */
+          window.open(url, '_blank');
+        }
+
+        setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+
+      }, mime, quality);
     }
 
     if (hdCanvas) {
       composite(hdCanvas);
+    } else if (hdImg.complete) {
+      composite(hdImg);
     } else {
-      if (hdImg.complete) {
-        composite(hdImg);
-      } else {
-        hdImg.onload = function() { composite(hdImg); };
-      }
+      hdImg.onload = function() { composite(hdImg); };
     }
 
-  }, 200); /* small delay to let qrcodejs finish rendering */
+  }, 300); /* 300ms — enough for qrcodejs on slow mobile CPUs */
 }
 
 /* ── Nav toggle (mobile) ── */
