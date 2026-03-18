@@ -76,89 +76,146 @@ function generateQR() {
   }, 120);
 }
 
-/* ── Download QR ── */
+/* ── Download QR — HD version ── */
 /*
-  Composites the QR + label + datetime onto an offscreen canvas
-  with a solid white background, then saves as PNG.
+  Strategy:
+  - Apply a SCALE multiplier (4×) so even a 220px QR becomes ~1800px output.
+  - Regenerate the QR at full HD size (1200px) on a hidden canvas for pixel-perfect dots.
+  - Composite: white bg → HD QR → label → date/time → export PNG at full resolution.
+  - Uses imageSmoothingEnabled = false to keep QR pixels sharp (no blur).
 */
 function downloadQR() {
-  var container = document.getElementById('qrCanvas');
-  var label     = document.getElementById('qrLabel').value.trim();
-  var dateStr   = document.getElementById('qrDateDisplay').textContent;
+  var container  = document.getElementById('qrCanvas');
+  var label      = document.getElementById('qrLabel').value.trim();
+  var dateStr    = document.getElementById('qrDateDisplay').textContent;
+  var darkColor  = document.getElementById('colorDark').value;
+  var lightColor = document.getElementById('colorLight').value;
+  var ecc        = document.getElementById('qrEcc').value;
+  var input      = document.getElementById('qrInput').value.trim();
 
-  var qrCanvas  = container.querySelector('canvas');
-  var qrImg     = container.querySelector('img');
-
-  if (!qrCanvas && (!qrImg || !qrImg.src)) {
+  if (!input) {
     alert('Generate a QR code first!');
     return;
   }
 
-  var qrSize       = qrCanvas ? qrCanvas.width : (qrImg.naturalWidth || qrImg.width);
-  var pad          = 28;
-  var fontSize     = Math.max(14, Math.round(qrSize * 0.062));
-  var dateFontSize = Math.max(11, Math.round(qrSize * 0.045));
-  var labelH       = label   ? fontSize     + 14 : 0;
-  var dateH        = dateStr ? dateFontSize + 10 : 0;
-  var totalW       = qrSize  + pad * 2;
-  var totalH       = qrSize  + pad * 2 + labelH + dateH;
+  /* ── HD settings ── */
+  var HD_SIZE   = 1200;          /* QR pixel size in the downloaded image  */
+  var SCALE     = 4;             /* multiplier for padding & font sizes     */
+  var PAD       = 60  * SCALE;  /* white border around QR                  */
+  var LABEL_FS  = 36  * SCALE;  /* label font size in px                   */
+  var DATE_FS   = 22  * SCALE;  /* date font size in px                    */
+  var GAP       = 18  * SCALE;  /* gap between QR bottom and label         */
+  var LINE_GAP  = 12  * SCALE;  /* gap between label and date              */
 
-  var off       = document.createElement('canvas');
-  off.width     = totalW;
-  off.height    = totalH;
-  var ctx       = off.getContext('2d');
+  var labelH    = label   ? LABEL_FS + GAP      : GAP / 2;
+  var dateH     = dateStr ? DATE_FS  + LINE_GAP : 0;
+  var totalW    = HD_SIZE + PAD * 2;
+  var totalH    = HD_SIZE + PAD * 2 + labelH + dateH + PAD / 2;
 
-  /* always white background */
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, totalW, totalH);
+  /* ── Step 1: render a fresh HD QR onto a hidden canvas ── */
+  var hdContainer = document.createElement('div');
+  hdContainer.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+  document.body.appendChild(hdContainer);
 
-  function drawAndSave(source) {
-    /* QR image */
-    ctx.drawImage(source, pad, pad, qrSize, qrSize);
+  var hdQR = new QRCode(hdContainer, {
+    text:         input,
+    width:        HD_SIZE,
+    height:       HD_SIZE,
+    colorDark:    darkColor,
+    colorLight:   lightColor,
+    correctLevel: ECC_MAP[ecc] || QRCode.CorrectLevel.H,
+  });
 
-    /* label text */
-    if (label) {
-      ctx.fillStyle    = '#111111';
-      ctx.font         = 'bold ' + fontSize + 'px "Outfit", Arial, sans-serif';
-      ctx.textAlign    = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, totalW / 2, pad + qrSize + labelH / 2 + 4);
+  /* qrcodejs renders async via a short timeout */
+  setTimeout(function() {
+    var hdCanvas = hdContainer.querySelector('canvas');
+    var hdImg    = hdContainer.querySelector('img');
+    var source   = hdCanvas || hdImg;
+
+    if (!source) {
+      document.body.removeChild(hdContainer);
+      alert('Could not render HD QR. Try again.');
+      return;
     }
 
-    /* date/time text */
-    if (dateStr) {
-      ctx.fillStyle    = '#777777';
-      ctx.font         = dateFontSize + 'px "Outfit", Arial, sans-serif';
-      ctx.textAlign    = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(dateStr, totalW / 2, pad + qrSize + labelH + dateH / 2 + 2);
+    /* ── Step 2: composite onto final HD canvas ── */
+    var off    = document.createElement('canvas');
+    off.width  = totalW;
+    off.height = totalH;
+    var ctx    = off.getContext('2d');
+
+    /* crisp pixel rendering — critical for QR codes */
+    ctx.imageSmoothingEnabled = false;
+
+    /* white background */
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, totalW, totalH);
+
+    function composite(src) {
+      /* draw HD QR */
+      ctx.drawImage(src, PAD, PAD, HD_SIZE, HD_SIZE);
+
+      /* thin separator line */
+      if (label || dateStr) {
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth   = 2 * SCALE;
+        ctx.beginPath();
+        ctx.moveTo(PAD, PAD + HD_SIZE + GAP / 2);
+        ctx.lineTo(totalW - PAD, PAD + HD_SIZE + GAP / 2);
+        ctx.stroke();
+      }
+
+      var curY = PAD + HD_SIZE + GAP;
+
+      /* label */
+      if (label) {
+        ctx.fillStyle    = '#111111';
+        ctx.font         = 'bold ' + LABEL_FS + 'px "Outfit", "Arial Black", Arial, sans-serif';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'top';
+        ctx.letterSpacing = (2 * SCALE) + 'px';
+        ctx.fillText(label, totalW / 2, curY);
+        curY += LABEL_FS + LINE_GAP;
+      }
+
+      /* date/time */
+      if (dateStr) {
+        ctx.fillStyle    = '#6b7280';
+        ctx.font         = DATE_FS + 'px "Outfit", Arial, sans-serif';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'top';
+        ctx.letterSpacing = (0.5 * SCALE) + 'px';
+        ctx.fillText(dateStr, totalW / 2, curY);
+      }
+
+      /* ── Step 3: export at full resolution PNG ── */
+      off.toBlob(function(blob) {
+        document.body.removeChild(hdContainer);
+        var safeName = label
+          ? label.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+          : 'genqr';
+        var url = URL.createObjectURL(blob);
+        var a   = document.createElement('a');
+        a.href     = url;
+        a.download = safeName + '-HD-' + Date.now() + '.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      }, 'image/png', 1.0); /* quality=1.0 — lossless PNG */
     }
 
-    /* export PNG */
-    off.toBlob(function(blob) {
-      var safeName = label
-        ? label.replace(/[^a-z0-9]/gi, '-').toLowerCase()
-        : 'genqr';
-      var url = URL.createObjectURL(blob);
-      var a   = document.createElement('a');
-      a.href     = url;
-      a.download = safeName + '-' + Date.now() + '.png';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-    }, 'image/png');
-  }
-
-  if (qrCanvas) {
-    drawAndSave(qrCanvas);
-  } else {
-    if (qrImg.complete) {
-      drawAndSave(qrImg);
+    if (hdCanvas) {
+      composite(hdCanvas);
     } else {
-      qrImg.onload = function() { drawAndSave(qrImg); };
+      if (hdImg.complete) {
+        composite(hdImg);
+      } else {
+        hdImg.onload = function() { composite(hdImg); };
+      }
     }
-  }
+
+  }, 200); /* small delay to let qrcodejs finish rendering */
 }
 
 /* ── Nav toggle (mobile) ── */
