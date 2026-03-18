@@ -1,1 +1,1 @@
-# gen-qr
+[# gen-qr](https://unknownmeh.github.io/gen-qr/)
