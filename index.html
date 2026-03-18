@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- App stylesheet -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="css/style.css" />
 
   <!-- qrcodejs open-source library (MIT) — must load BEFORE app.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -240,7 +240,46 @@
   </div><!-- /page -->
 
   <!-- App script — loaded last so DOM is ready -->
-  <script src="app.js"></script>
+  <script src="script/script.js"></script>
+  <script>
+(function () {
+    // Disable right click
+    document.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+    });
+
+    // Disable key shortcuts
+    document.addEventListener('keydown', function (e) {
+        if (
+            e.key === "F12" ||
+            (e.ctrlKey && ['c', 'u', 's', 'a', 'i'].includes(e.key.toLowerCase())) ||
+            (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase()))
+        ) {
+            e.preventDefault();
+        }
+    });
+
+    // Disable dragging
+    document.addEventListener('dragstart', function (e) {
+        e.preventDefault();
+    });
+
+    // Disable text selection
+    document.addEventListener('selectstart', function (e) {
+        e.preventDefault();
+    });
+
+    // DevTools detection
+    setInterval(function () {
+        if (
+            window.outerWidth - window.innerWidth > 160 ||
+            window.outerHeight - window.innerHeight > 160
+        ) {
+            document.body.innerHTML = "<h1>Access Denied</h1>";
+        }
+    }, 1000);
+})();
+</script>
 
 </body>
 </html>
