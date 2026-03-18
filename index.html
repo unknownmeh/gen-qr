@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEN-QR — Instant QR Code Generator</title>
+
+  <!-- Google Fonts: Bebas Neue (display) + Outfit (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- App stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- qrcodejs open-source library (MIT) — must load BEFORE app.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- ── BACKGROUND EFFECTS ── -->
+  <div class="mesh"></div>
+  <div class="orb orb-a"></div>
+  <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
+
+  <div class="page">
+
+    <!-- ════════════════════════════
+         NAVBAR
+    ════════════════════════════ -->
+    <nav>
+      <a class="logo" href="genqr_img.png">gen-QR</a>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="#generator">Generator</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#" class="pill">Try Free →</a></li>
+      </ul>
+      <div class="hamburger" onclick="toggleNav()">
+        <span></span><span></span><span></span>
+      </div>
+    </nav>
+
+    <!-- ════════════════════════════
+         HERO
+    ════════════════════════════ -->
+    <section class="hero">
+      <div class="hero-chip">Free · Instant · No Sign-up</div>
+      <h1>
+        Generate<br>
+        <span class="g">QR Codes</span><br>
+        Instantly.
+      </h1>
+      <p class="hero-sub">
+        Turn any URL or text into a crisp, scannable QR code —
+        runs entirely in your browser. No server. No install.
+      </p>
+      <div class="os-badge">Powered by AETHERIA</div>
+      <div class="scroll-hint">
+        <span>Scroll down</span>
+        <div class="scroll-pip"></div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════
+         QR GENERATOR
+    ════════════════════════════ -->
+    <section class="gen-wrap" id="generator">
+      <div class="gen-card glass">
+
+        <p class="ctitle">Make a QR Code</p>
+        <p class="csub">Type any URL or text below. Generated live in your browser.</p>
+
+        <div class="lib-tag">
+          📦 AETHERIA &nbsp;·&nbsp; EASY &nbsp;·&nbsp; When Busy
+        </div>
+
+        <!-- URL / text input -->
+        <div class="field">
+          <input
+            type="text"
+            id="qrInput"
+            placeholder="https://your-link.com or any text…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <!-- Size & error-correction options -->
+        <div class="options-row">
+          <div class="opt-group">
+            <label>QR Size</label>
+            <select id="qrSize">
+              <option value="160">Small (160px)</option>
+              <option value="220" selected>Medium (220px)</option>
+              <option value="300">Large (300px)</option>
+              <option value="400">X-Large (400px)</option>
+            </select>
+          </div>
+          <div class="opt-group">
+            <label>Error Correction</label>
+            <select id="qrEcc">
+              <option value="L">Low (L)</option>
+              <option value="M" selected>Medium (M)</option>
+              <option value="Q">Quartile (Q)</option>
+              <option value="H">High (H)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Colour pickers -->
+        <div class="color-row">
+          <div class="color-group">
+            <label>Dark Color</label>
+            <input type="color" id="colorDark" value="#000000" />
+          </div>
+          <div class="color-group">
+            <label>Light Color</label>
+            <input type="color" id="colorLight" value="#ffffff" />
+          </div>
+        </div>
+
+        <!-- Custom label (printed below QR on download) -->
+        <div class="label-field">
+          <label>Label (printed below QR)</label>
+          <input
+            type="text"
+            id="qrLabel"
+            placeholder="e.g. My Website, Contact Me, Menu…"
+            autocomplete="off"
+            maxlength="60"
+          />
+        </div>
+
+        <button class="btn-gen" onclick="generateQR()">Generate QR Code</button>
+
+        <div class="err" id="errMsg"></div>
+
+        <!-- ── RESULT ── -->
+        <div class="result" id="result">
+          <!--
+            #qrWhiteCard mirrors exactly what gets downloaded:
+            white background + QR canvas + label + date/time
+          -->
+          <div id="qrWhiteCard">
+            <div id="qrCanvas"></div>
+            <div id="qrLabelDisplay"></div>
+            <div id="qrDateDisplay"></div>
+          </div>
+
+          <p class="result-note">Scan with any camera app</p>
+
+          <button class="btn-dl" onclick="downloadQR()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download PNG
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ════════════════════════════
+         FEATURES
+    ════════════════════════════ -->
+    <section class="features" id="features">
+      <p class="eyebrow">Why GEN-QR</p>
+      <h2>Built for speed.<br><span>Zero friction.</span></h2>
+      <div class="feat-grid">
+
+        <div class="feat-card glass">
+          <div class="feat-icon ic-v">⚡</div>
+          <h3>Instant Generation</h3>
+          <p>QR codes are rendered directly in your browser using the open-source <strong>qrcodejs</strong> library — zero network round-trip.</p>
+        </div>
+
+        <div class="feat-card glass">
+          <div class="feat-icon ic-b">🎨</div>
+          <h3>Fully Customisable</h3>
+          <p>Pick your own dark/light colours, output size, and error correction level. Your QR, your style.</p>
+        </div>
+
+        <div class="feat-card glass">
+          <div class="feat-icon ic-c">🔒</div>
+          <h3>100% Private</h3>
+          <p>Nothing is sent to any server. Your data never leaves your device — generation happens entirely client-side.</p>
+        </div>
+
+        <div class="feat-card glass">
+          <div class="feat-icon ic-v">📦</div>
+          <h3>Hassle Free</h3>
+          <p>Powered by <strong>AETHERIA</strong>. No installs, no accounts, no limits — just open and go.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ════════════════════════════
+         FOOTER
+    ════════════════════════════ -->
+    <footer>
+      <span class="foot-logo">GEN-QR</span>
+      <nav class="foot-links">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+      </nav>
+      <p class="foot-copy">© 2026 GEN-QR  · Powered by AETHERIA</p>
+    </footer>
+
+  </div><!-- /page -->
+
+  <!-- App script — loaded last so DOM is ready -->
+  <script src="app.js"></script>
+  <script>
+(function () {
+    // Disable right click
+    document.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+    });
+
+    // Disable key shortcuts
+    document.addEventListener('keydown', function (e) {
+        if (
+            e.key === "F12" ||
+            (e.ctrlKey && ['c', 'u', 's', 'a', 'i'].includes(e.key.toLowerCase())) ||
+            (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase()))
+        ) {
+            e.preventDefault();
+        }
+    });
+
+    // Disable dragging
+    document.addEventListener('dragstart', function (e) {
+        e.preventDefault();
+    });
+
+    // Disable text selection
+    document.addEventListener('selectstart', function (e) {
+        e.preventDefault();
+    });
+
+    // DevTools detection
+    setInterval(function () {
+        if (
+            window.outerWidth - window.innerWidth > 160 ||
+            window.outerHeight - window.innerHeight > 160
+        ) {
+            document.body.innerHTML = "<h1>Access Denied</h1>";
+        }
+    }, 1000);
+})();
+</script>
+
+</body>
+</html>
