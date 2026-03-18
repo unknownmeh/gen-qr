@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- App stylesheet -->
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="style.css" />
 
   <!-- qrcodejs open-source library (MIT) — must load BEFORE app.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -30,7 +30,10 @@
          NAVBAR
     ════════════════════════════ -->
     <nav>
-      <a class="logo" href="genqr_img.png">gen-QR</a>
+      <a class="logo" href="#">
+        
+        gen-QR
+      </a>
       <ul class="nav-menu" id="navMenu">
         <li><a href="#generator">Generator</a></li>
         <li><a href="#features">Features</a></li>
@@ -46,11 +49,14 @@
     ════════════════════════════ -->
     <section class="hero">
       <div class="hero-chip">Free · Instant · No Sign-up</div>
-      <h1>
-        Generate<br>
-        <span class="g">QR Codes</span><br>
-        Instantly.
-      </h1>
+      <div class="hero-title-row">
+        
+        <h1>
+          Generate<br>
+          <span class="g">QR Codes</span><br>
+          Instantly.
+        </h1>
+      </div>
       <p class="hero-sub">
         Turn any URL or text into a crisp, scannable QR code —
         runs entirely in your browser. No server. No install.
@@ -150,16 +156,31 @@
 
           <p class="result-note">Scan with any camera app</p>
 
-          <button class="btn-dl" onclick="downloadQR()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.2"
-                 stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Download PNG
-          </button>
+          <!-- Format selector + HD Download -->
+          <div class="dl-row">
+            <div class="dl-format-group">
+              <label class="dl-format-label">Format</label>
+              <div class="dl-format-btns">
+                <button class="fmt-btn active" data-fmt="png"  onclick="setFormat(this)">PNG</button>
+                <button class="fmt-btn"        data-fmt="jpg"  onclick="setFormat(this)">JPG</button>
+                <button class="fmt-btn"        data-fmt="jpeg" onclick="setFormat(this)">JPEG</button>
+              </div>
+            </div>
+            <button class="btn-dl" id="dlBtn" onclick="downloadQR()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span id="dlBtnLabel">Download HD PNG</span>
+            </button>
+          </div>
+          <!-- HD badge -->
+          <p class="hd-note">
+            ✦ Always exported at <strong>2400 × 2400px</strong> — print-ready on all devices
+          </p>
         </div>
 
       </div>
@@ -204,59 +225,22 @@
          FOOTER
     ════════════════════════════ -->
     <footer>
-      <span class="foot-logo">GEN-QR</span>
+      <span class="foot-logo">
+        GEN-QR
+      </span>
       <nav class="foot-links">
         <a href="#">Privacy</a>
         <a href="#">Terms</a>
         <a href="#">About</a>
         <a href="#">Contact</a>
       </nav>
-      <p class="foot-copy">© 2026 GEN-QR  · Powered by AETHERIA</p>
+      <p class="foot-copy">© 2026 GEN-QR — 100% client-side · Powered by AETHERIA</p>
     </footer>
 
   </div><!-- /page -->
 
   <!-- App script — loaded last so DOM is ready -->
-  <script src="script/script.js"></script>
-  <script>
-(function () {
-    // Disable right click
-    document.addEventListener('contextmenu', function (e) {
-        e.preventDefault();
-    });
-
-    // Disable key shortcuts
-    document.addEventListener('keydown', function (e) {
-        if (
-            e.key === "F12" ||
-            (e.ctrlKey && ['c', 'u', 's', 'a', 'i'].includes(e.key.toLowerCase())) ||
-            (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase()))
-        ) {
-            e.preventDefault();
-        }
-    });
-
-    // Disable dragging
-    document.addEventListener('dragstart', function (e) {
-        e.preventDefault();
-    });
-
-    // Disable text selection
-    document.addEventListener('selectstart', function (e) {
-        e.preventDefault();
-    });
-
-    // DevTools detection
-    setInterval(function () {
-        if (
-            window.outerWidth - window.innerWidth > 160 ||
-            window.outerHeight - window.innerHeight > 160
-        ) {
-            document.body.innerHTML = "<h1>Access Denied</h1>";
-        }
-    }, 1000);
-})();
-</script>
+  <script src="app.js"></script>
 
 </body>
 </html>
